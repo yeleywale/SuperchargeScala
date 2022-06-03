@@ -1,47 +1,55 @@
 package exercises.action.imperative
 
-import java.time.{Instant, LocalDate}
-
-import exercises.action.imperative.UserCreationExercises._
 import exercises.action.DateGenerator._
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.Gen
+import exercises.action.imperative.UserCreationExercises._
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
+import java.time.{Instant, LocalDate}
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 // Run the test using the green arrow next to class name (if using IntelliJ)
 // or run `sbt` in the terminal to open it in shell mode, then type:
 // testOnly exercises.action.imperative.UserCreationExercisesTest
 class UserCreationExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
 
-  ignore("readSubscribeToMailingList example") {
-    val inputs  = ListBuffer("N")
-    val outputs = ListBuffer.empty[String]
-    val console = Console.mock(inputs, outputs)
-    val result  = readSubscribeToMailingList(console)
-
-    assert(result == false)
-    assert(outputs.toList == List("Would you like to subscribe to our mailing list? [Y/N]"))
+  test(testName = "parseYesNo") {
+    assert(parseYesNo(line = "Y"))
+    assert(!parseYesNo(line = "N"))
+    assert(Try(parseYesNo(line = "Never")).isFailure)
   }
 
-  ignore("readSubscribeToMailingList example failure") {
+  test("readSubscribeToMailingList example") {
+    forAll{ (yesNo: Boolean) =>
+      val inputs  = ListBuffer(formatYesNo(yesNo))
+      val outputs = ListBuffer.empty[String]
+      val console = Console.mock(inputs, outputs)
+      val result  = readSubscribeToMailingList(console)
+
+      assert(result == yesNo)
+      assert(outputs.toList == List("Would you like to subscribe to our mailing list? [Y/N]"))
+    }
+  }
+
+  test("readSubscribeToMailingList example failure") {
     val console = Console.mock(ListBuffer("Never"), ListBuffer())
     val result  = Try(readSubscribeToMailingList(console))
 
     assert(result.isFailure)
   }
 
-  ignore("readDateOfBirth example success") {
-    val console = Console.mock(ListBuffer("21-07-1986"), ListBuffer())
-    val result  = readDateOfBirth(console)
+  test("readDateOfBirth example success") {
+    forAll { (dateOfBirth: LocalDate) =>
+      val console = Console.mock(ListBuffer(dateOfBirthFormatter.format(dateOfBirth)), ListBuffer())
+      val result  = readDateOfBirth(console)
 
-    assert(result == LocalDate.of(1986, 7, 21))
+      assert(result == dateOfBirth)
+
+    }
   }
 
-  ignore("readDateOfBirth example failure") {
+  test("readDateOfBirth example failure") {
     val console = Console.mock(ListBuffer("21/07/1986"), ListBuffer())
     val result  = Try(readDateOfBirth(console))
 
@@ -57,7 +65,7 @@ class UserCreationExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropert
     val expected = User(
       name = "Eda",
       dateOfBirth = LocalDate.of(2001, 3, 18),
-//      subscribedToMailingList = true,
+      subscribed = true,
       createdAt = Instant.now()
     )
 
@@ -68,19 +76,19 @@ class UserCreationExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropert
   // PART 2: Error handling
   //////////////////////////////////////////////
 
-  ignore("readSubscribeToMailingListRetry negative maxAttempt") {
+  test("readSubscribeToMailingListRetry negative maxAttempt") {
     val console = Console.mock(ListBuffer.empty[String], ListBuffer.empty[String])
     val result  = Try(readSubscribeToMailingListRetry(console, maxAttempt = -1))
 
     assert(result.isFailure)
   }
 
-  ignore("readSubscribeToMailingListRetry example success") {
+  test("readSubscribeToMailingListRetry example success") {
     val outputs = ListBuffer.empty[String]
     val console = Console.mock(ListBuffer("Never", "N"), outputs)
     val result  = readSubscribeToMailingListRetry(console, maxAttempt = 2)
 
-    assert(result == false)
+    assert(!result)
     assert(
       outputs.toList == List(
         "Would you like to subscribe to our mailing list? [Y/N]",
@@ -90,7 +98,7 @@ class UserCreationExercisesTest extends AnyFunSuite with ScalaCheckDrivenPropert
     )
   }
 
-  ignore("readSubscribeToMailingListRetry example invalid input") {
+  test("readSubscribeToMailingListRetry example invalid input") {
     val outputs = ListBuffer.empty[String]
     val console = Console.mock(ListBuffer("Never"), outputs)
     val result  = Try(readSubscribeToMailingListRetry(console, maxAttempt = 1))
