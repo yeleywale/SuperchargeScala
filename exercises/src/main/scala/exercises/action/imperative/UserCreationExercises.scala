@@ -4,9 +4,7 @@ import exercises.action.fp.console.UserCreationService.formatDateOfBirth
 
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
 import java.time.{Instant, LocalDate}
-import scala.annotation.tailrec
 import scala.io.StdIn
-import scala.util.{Failure, Success, Try}
 
 // Run the App using the green arrow next to object (if using IntelliJ)
 // or run `sbt` in the terminal to open it in shell mode, then type:
@@ -163,12 +161,12 @@ object UserCreationExercises {
     retry(maxAttempt) {
       console.writeLine("Would you like to subscribe to our mailing list? [Y/N]")
       val line = console.readLine()
-      Try(parseYesNo(line)) match {
-        case Success(yesNo) => yesNo
-        case Failure(exception) =>
-          console.writeLine("""Incorrect format, enter "Y" for Yes or "N" for "No"""")
-          throw exception
-      }
+      onError(
+        action = parseYesNo(line),
+        cleanup = _ => {
+          console.writeLine("Incorrect format, enter " + formatYesNo(true) + " for Yes or " + formatYesNo(false) + " for No")
+        }
+      )
     }
   }
 
@@ -189,20 +187,16 @@ object UserCreationExercises {
   // [Prompt] Incorrect format, for example enter "18-03-2001" for 18th of March 2001
   // Throws an exception because the user only had 1 attempt and they entered an invalid input.
   // Note: `maxAttempt` must be greater than 0, if not you should throw an exception.
-  @tailrec
   def readDateOfBirthRetry(console: Console, maxAttempt: Int): LocalDate = {
-    require(maxAttempt > 0, "maxAttempt must be greater than 0")
-    console.writeLine("What's your date of birth? [dd-mm-yyyy]")
-    val line = console.readLine()
-    Try(LocalDate.parse(line,dateOfBirthFormatter)) match {
-      case Success(dob) => dob
-      case Failure(_) =>
-        if (maxAttempt > 1) {
-          console.writeLine("Incorrect format, enter " + formatDateOfBirth(LocalDate.of(2001, 3, 18)) + " for " + LocalDate.of(2001, 3, 18))
-          readDateOfBirthRetry(console, maxAttempt - 1)
-        } else {
-          throw new IllegalArgumentException("""Expected "Y" or "N" """)
+   retry(maxAttempt) {
+      console.writeLine("What's your date of birth? [dd-mm-yyyy]")
+      val line = console.readLine()
+      onError(
+        action = LocalDate.parse(line, dateOfBirthFormatter),
+        cleanup = _ => {
+          console.writeLine("Incorrect format, for example enter " + formatDateOfBirth(LocalDate.of(2001, 3, 18)) + " for 18th of March 2001")
         }
+      )
     }
   }
 
