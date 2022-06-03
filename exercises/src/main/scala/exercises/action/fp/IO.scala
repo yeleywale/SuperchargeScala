@@ -1,10 +1,8 @@
 package exercises.action.fp
 
-import java.util.concurrent.CountDownLatch
-import scala.annotation.tailrec
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 trait IO[A] {
 
@@ -20,8 +18,10 @@ trait IO[A] {
   // action3.unsafeRun()
   // prints "Fetching user", fetches user 1234 from db and returns it.
   // Note: There is a test for `andThen` in `exercises.action.fp.IOTest`.
-  def andThen[Other](other: IO[Other]): IO[Other] =
-    ???
+  def andThen[Other](other: IO[Other]): IO[Other] = IO {
+    this.unsafeRun()
+    other.unsafeRun()
+  }
 
   // Popular alias for `andThen` (cat-effect, Monix, ZIO).
   // For example,
@@ -41,7 +41,10 @@ trait IO[A] {
   // Note: `callback` is expected to be an FP function (total, deterministic, no action).
   //       Use `flatMap` if `callBack` is not an FP function.
   def map[Next](callBack: A => Next): IO[Next] =
-    ???
+    IO {
+      val result: A = this.unsafeRun()
+      callBack(result)
+    }
 
   // Runs the current action (`this`), if it succeeds passes the result to `callback` and
   // runs the second action.
@@ -53,7 +56,10 @@ trait IO[A] {
   // Fetches the user with id 1234 from the database and send them an email using the email
   // address found in the database.
   def flatMap[Next](callback: A => IO[Next]): IO[Next] =
-    ???
+    IO {
+      val result: A = this.unsafeRun()
+      callback(result).unsafeRun()
+    }
 
   // Runs the current action, if it fails it executes `cleanup` and rethrows the original error.
   // If the current action is a success, it will return the result.
